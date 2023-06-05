@@ -1,5 +1,3 @@
-interface Parser<T, C> {
+interface Parser<T, C> : Completable<C> {
     fun parse(token: String): T
-
-    fun getCompletions(typed: String, context: C): List<String> = ArrayList()
 }

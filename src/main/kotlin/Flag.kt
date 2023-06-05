@@ -1,0 +1,1 @@
+data class Flag(val longName: String, val shortName: Char? = null)
