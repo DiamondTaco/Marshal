@@ -13,19 +13,10 @@ class CommandParser<C> {
     private val superRegex = Regex("(--([\\w-]+)|-(\\w+))(=(`.+`|[^ ]+))? *")
 
     fun parsePartial(command: String, context: C, cursorLocation: Int): List<String>? {
-        var currentIndex = 0
-        var lastIndex = 0
-        var lastMatch: MatchResult? = null
+        val matches = superRegex.matchAll(command)
 
-        while (currentIndex < cursorLocation) {
-            lastIndex = currentIndex
-
-            lastMatch = superRegex.matchAt(command, currentIndex) ?: return null
-
-            currentIndex = lastMatch.range.last + 1
-        }
-
-        if (lastMatch == null) return null
+        val lastMatch = matches?.firstOrNull { it.range.last >= cursorLocation } ?: return null
+        val lastIndex = lastMatch.range.first
 
         val (_, argName, long, short, eArg, arg) = lastMatch.groupValues
         val cursorOffset = cursorLocation - lastIndex
@@ -47,45 +38,45 @@ class CommandParser<C> {
         }
     }
 
-    private fun parseMatch(values: List<String>): Any? {
+    private fun parseMatch(values: List<String>): Pair<Flag, *>? {
         val (_, _, long, short, _, arg) = values
 
         if (short.isNotEmpty()) {
-            val flagNames = short.dropLast(1).toCharArray()
-            val argName = short.last()
+            val flagNames = (if (arg.isEmpty()) short else short.dropLast(1)).toCharArray()
 
             flagNames.forEach {
                 if (flags.shortNames.contains(it)) flags.setShortName(
                     it, true
-                ) else throw ParseException("Could not find flag $it")
+                ) else throw TokenizationException("Could not find short flag $it")
             }
 
-            return (arguments.shortNames[argName]
-                ?: throw ParseException("Could not find short arg $argName")).second.parser.parse(arg)
+            if (arg.isEmpty()) return null
+
+            val shortArg = arguments.shortNames[short.last()] //
+                ?: throw TokenizationException("Could not find short arg ${short.last()}")
+            return Pair(Flag(shortArg.first, short.last()), shortArg.second.parser.parse(arg))
         }
 
         if (long.isNotEmpty()) {
-            return (arguments.longNames[long]
-                ?: throw ParseException("Could not find long arg $long")).second.parser.parse(arg)
+            return if (arg.isEmpty()) {
+                if (flags.longNames.contains(long)) flags.setLongName(
+                    long, true
+                ) else throw TokenizationException("Could not find long flag $long")
+                null
+            } else {
+                val longArg = arguments.longNames[long] ?: throw TokenizationException("Could not find long arg $long")
+                Pair(Flag(long, longArg.first), longArg.second.parser.parse(arg))
+            }
         }
 
-        return null
+        throw TokenizationException("Empty argument")
     }
 
-    fun parseCommand(command: String): List<Any?> {
-        val matches = mutableListOf<MatchResult>()
+    @Throws(TokenizationException::class, ParseException::class)
+    fun parseCommand(command: String): Map<Flag, *> {
+        val matches = superRegex.matchAll(command) ?: throw TokenizationException("Could not tokenize the input.")
 
-        var currentIndex = 0
-
-        while (currentIndex < command.length) {
-            matches.add(
-                superRegex.matchAt(command, currentIndex)
-                    ?: throw TokenizationException("Could not tokenize the input.")
-            )
-            currentIndex = matches.last().range.last + 1
-        }
-
-        return matches.map { parseMatch(it.groupValues) }
+        return matches.mapNotNull { parseMatch(it.groupValues) }.toMap()
     }
 
     object ShortCompletions : Completable<CommandParser<*>> {

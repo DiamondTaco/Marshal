@@ -52,3 +52,16 @@ fun testStuff() {
 
     println("$x @ ${command[11]}, $y @ ${command[19]}, $z @ ${command[29]}")
 }
+
+fun Regex.matchAll(input: CharSequence): List<MatchResult>? {
+    var currentIndex = 0
+    val matches = mutableListOf<MatchResult>()
+
+    while (currentIndex < input.length) {
+        (matchAt(input, currentIndex) ?: return null)
+            .apply { currentIndex = range.last + 1}
+            .also { matches.add(it) }
+    }
+
+    return matches
+}
