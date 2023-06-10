@@ -1,8 +1,10 @@
+import parsers.Parser
+
 class Command<C> {
-    private val arguments: FlagMap<Argument<*, C>> = FlagMap()
+    private val arguments: FlagMap<Parser<*, C>> = FlagMap()
     private val flags: FlagMap<Boolean> = FlagMap()
 
-    fun addArgument(flag: Flag, argument: Argument<*, C>) {
+    fun addArgument(flag: Flag, argument: Parser<*, C>) {
         arguments.addPair(flag, argument)
     }
 
@@ -29,8 +31,8 @@ class Command<C> {
             isInArgName && short.isNotEmpty() -> ShortCompletions.getCompletions(short, this)
 
             !isInArgName && arg.isNotEmpty() -> arguments.run {
-                longNames[long] ?: shortNames[short.lastOrNull()]
-            }?.second?.parser?.getCompletions(arg.drop(1).trim('`'), context)
+                getName(long) ?: short.lastOrNull()?.let { getName(it) }
+            }?.getCompletions(arg.drop(1).trim('`'), context)
 
             else -> null
         }
