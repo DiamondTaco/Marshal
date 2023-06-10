@@ -10,10 +10,10 @@ class Command<C> {
         flags.addPair(flag, false)
     }
 
-    private val superRegex = Regex("(--([\\w-]+)|-(\\w+))=?(`.+?`|[^ ]+)? *")
+    private val parseRegex = Regex("(--([\\w-]+)|-(\\w+))(=(`.+?`|[^ ]+)?)? *")
 
     fun parsePartial(command: String, context: C, cursorLocation: Int): List<String>? {
-        val matches = superRegex.matchAll(command)
+        val matches = parseRegex.matchAll(command)
 
         val lastMatch = matches?.firstOrNull { it.range.contains(cursorLocation) } ?: return null
 
@@ -72,7 +72,7 @@ class Command<C> {
 
     @Throws(TokenizationException::class, ParseException::class)
     fun parseCommand(command: String): Map<Flag, *> {
-        val matches = superRegex.matchAll(command) ?: throw TokenizationException("Could not tokenize the input.")
+        val matches = parseRegex.matchAll(command) ?: throw TokenizationException("Could not tokenize the input.")
 
         return matches.mapNotNull { parseMatch(it.groupValues) }.toMap()
     }
