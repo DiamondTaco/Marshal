@@ -1,4 +1,4 @@
-class CommandParser<C> {
+class Command<C> {
     private val arguments: FlagMap<Argument<*, C>> = FlagMap()
     private val flags: FlagMap<Boolean> = FlagMap()
 
@@ -10,18 +10,16 @@ class CommandParser<C> {
         flags.addPair(flag, false)
     }
 
-    private val superRegex = Regex("(--([\\w-]+)|-(\\w+))(=(`.+`|[^ ]+))? *")
+    private val superRegex = Regex("(--([\\w-]+)|-(\\w+))=?(`.+?`|[^ ]+)? *")
 
     fun parsePartial(command: String, context: C, cursorLocation: Int): List<String>? {
         val matches = superRegex.matchAll(command)
 
-        val lastMatch = matches?.firstOrNull { it.range.last >= cursorLocation } ?: return null
-        val lastIndex = lastMatch.range.first
+        val lastMatch = matches?.firstOrNull { it.range.contains(cursorLocation) } ?: return null
 
-        val (_, argName, long, short, eArg, arg) = lastMatch.groupValues
-        val cursorOffset = cursorLocation - lastIndex
+        val (_, _, long, short, arg, _) = lastMatch.groupValues
 
-        val isInArgName = cursorOffset <= argName.length
+        val isInArgName = cursorLocation < lastMatch.range.last - arg.length
 
         return when {
             isInArgName && long.isNotEmpty() -> {
@@ -30,9 +28,9 @@ class CommandParser<C> {
 
             isInArgName && short.isNotEmpty() -> ShortCompletions.getCompletions(short, this)
 
-            !isInArgName && eArg.isNotEmpty() -> arguments.run {
+            !isInArgName && arg.isNotEmpty() -> arguments.run {
                 longNames[long] ?: shortNames[short.lastOrNull()]
-            }?.second?.parser?.getCompletions(arg.trim('`'), context)
+            }?.second?.parser?.getCompletions(arg.drop(1).trim('`'), context)
 
             else -> null
         }
@@ -79,8 +77,8 @@ class CommandParser<C> {
         return matches.mapNotNull { parseMatch(it.groupValues) }.toMap()
     }
 
-    object ShortCompletions : Completable<CommandParser<*>> {
-        override fun getCompletions(typed: String, context: CommandParser<*>): List<String> {
+    object ShortCompletions : Completable<Command<*>> {
+        override fun getCompletions(typed: String, context: Command<*>): List<String> {
             val flags = context.flags.shortNames.keys.map { Pair(it, "") }
             val args = context.arguments.shortNames.keys.map { Pair(it, "=") }
 
@@ -88,8 +86,8 @@ class CommandParser<C> {
         }
     }
 
-    object LongCompletions : Completable<CommandParser<*>> {
-        override fun getCompletions(typed: String, context: CommandParser<*>): List<String> {
+    object LongCompletions : Completable<Command<*>> {
+        override fun getCompletions(typed: String, context: Command<*>): List<String> {
             val flags = context.flags.longNames.keys.map { Pair(it, "") }
             val args = context.arguments.longNames.keys.map { Pair(it, "=") }
 
