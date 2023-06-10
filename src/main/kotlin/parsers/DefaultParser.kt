@@ -1,7 +1,6 @@
 package parsers
 
 import ParseException
-import kotlin.properties.Delegates
 
 class DefaultParser<T, C>(val parser: Parser<T, C>, val defaultSupplier: () -> T) : Parser<T, C> {
     override fun getCompletions(typed: String, context: C): List<String> =

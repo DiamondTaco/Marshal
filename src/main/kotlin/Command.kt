@@ -12,6 +12,7 @@ class Command<C> {
         flags.addPair(flag, false)
     }
 
+    // regex matches --flag | --arg=n | --arg=`n` | -asdf | -asdf=n | -asdf=`n`
     private val parseRegex = Regex("(--([\\w-]+)|-(\\w+))(=(`.+?`|[^ ]+)?)? *")
 
     fun parsePartial(command: String, context: C, cursorLocation: Int): List<String>? {
@@ -38,9 +39,10 @@ class Command<C> {
         }
     }
 
-//    fun parseCommand(command: String): Map<Flag, *> {
+    fun parseCommand(command: String): Map<Flag, *> {
 //        val matched = parseRegex.matchAll(command).takeIf { it }
-//    }
+        TODO("Add command parsing")
+    }
 
     object ShortCompletions : Completable<Command<*>> {
         override fun getCompletions(typed: String, context: Command<*>): List<String> {
