@@ -38,62 +38,32 @@ class Command<C> {
         }
     }
 
-    private fun parseMatch(values: List<String>): Pair<Flag, *>? {
-        val (_, _, long, short, _, arg) = values
-
-        if (short.isNotEmpty()) {
-            val flagNames = (if (arg.isEmpty()) short else short.dropLast(1)).toCharArray()
-
-            flagNames.forEach {
-                if (flags.shortNames.contains(it)) flags.setShortName(
-                    it, true
-                ) else throw TokenizationException("Could not find short flag $it")
-            }
-
-            if (arg.isEmpty()) return null
-
-            val shortArg = arguments.shortNames[short.last()] //
-                ?: throw TokenizationException("Could not find short arg ${short.last()}")
-            return Pair(Flag(shortArg.first, short.last()), shortArg.second.parser.parse(arg))
-        }
-
-        if (long.isNotEmpty()) {
-            return if (arg.isEmpty()) {
-                if (flags.longNames.contains(long)) flags.setLongName(
-                    long, true
-                ) else throw TokenizationException("Could not find long flag $long")
-                null
-            } else {
-                val longArg = arguments.longNames[long] ?: throw TokenizationException("Could not find long arg $long")
-                Pair(Flag(long, longArg.first), longArg.second.parser.parse(arg))
-            }
-        }
-
-        throw TokenizationException("Empty argument")
-    }
-
-    @Throws(TokenizationException::class, ParseException::class)
-    fun parseCommand(command: String): Map<Flag, *> {
-        val matches = parseRegex.matchAll(command) ?: throw TokenizationException("Could not tokenize the input.")
-
-        return matches.mapNotNull { parseMatch(it.groupValues) }.toMap()
-    }
+//    fun parseCommand(command: String): Map<Flag, *> {
+//        val matched = parseRegex.matchAll(command).takeIf { it }
+//    }
 
     object ShortCompletions : Completable<Command<*>> {
         override fun getCompletions(typed: String, context: Command<*>): List<String> {
-            val flags = context.flags.shortNames.keys.map { Pair(it, "") }
-            val args = context.arguments.shortNames.keys.map { Pair(it, "=") }
+            val flags = context.flags.flags
+                .mapNotNull { it.shortName }
+                .filterNot { it in typed }
+                .map { "$it" }
 
-            return flags.plus(args).filterNot { it.first in typed }.map { it.first + it.second }
+            val args = context.arguments.flags
+                .mapNotNull { it.shortName }
+                .filterNot { it in typed }
+                .map { "$it=" }
+
+            return flags.plus(args)
         }
     }
 
     object LongCompletions : Completable<Command<*>> {
         override fun getCompletions(typed: String, context: Command<*>): List<String> {
-            val flags = context.flags.longNames.keys.map { Pair(it, "") }
-            val args = context.arguments.longNames.keys.map { Pair(it, "=") }
+            val flags = context.flags.flags.map { it.longName }
+            val args = context.arguments.flags.map { "${it.longName}=" }
 
-            return flags.plus(args).filter { it.first.startsWith(typed) }.map { it.first + it.second }
+            return flags.plus(args).filter { it.startsWith(typed) }
         }
     }
 }
