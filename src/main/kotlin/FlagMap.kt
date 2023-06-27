@@ -23,8 +23,15 @@ class FlagMap<T> {
     fun getName(longName: String): T? =
         longNames[longName]?.second
 
+
     fun getName(shortName: Char): T? =
         shortNames[shortName]?.second
+
+    fun getFlag(longName: String): Flag? =
+        longNames[longName]?.let { Flag(longName, it.first) }
+
+    fun getFlag(shortName: Char): Flag? =
+        shortNames[shortName]?.let { Flag(it.first, shortName) }
 
     val flags get() = longNames.map { Flag(it.key, it.value.first) }
 }
